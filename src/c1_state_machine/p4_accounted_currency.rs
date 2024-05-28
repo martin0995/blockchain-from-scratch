@@ -45,7 +45,58 @@ impl StateMachine for AccountedCurrency {
     type Transition = AccountingTransaction;
 
     fn next_state(starting_state: &Balances, t: &AccountingTransaction) -> Balances {
-        todo!("Exercise 1")
+        let mut state = starting_state.clone();
+
+        match t {
+            AccountingTransaction::Mint { minter, amount } => {
+                if *amount > 0 {
+                    if state.contains_key(minter) {
+                        if let Some(balance) = state.get(minter) {
+                            state.insert(minter.clone(), balance + amount);
+                        }
+                    } else {
+                        state.insert(minter.clone(), *amount);
+                    }
+                }
+            }
+            AccountingTransaction::Burn { burner, amount } => {
+                if state.contains_key(burner) {
+                    if let Some(balance) = state.get(burner) {
+                        if *balance <= *amount {
+                            state.remove(burner);
+                        } else {
+                            state.insert(burner.clone(), balance - amount);
+                        }
+                    }
+                }
+            }
+            AccountingTransaction::Transfer { sender, receiver, amount } => {
+                if sender == receiver {
+                    return state;
+                }
+                if state.contains_key(sender) {
+                    if let Some(sender_balance) = state.get(sender) {
+                        if *sender_balance >= *amount {
+                            let new_sender_balance = sender_balance - amount;
+                            if new_sender_balance == 0 {
+                                state.remove(sender);
+                            } else {
+                                state.insert(sender.clone(), new_sender_balance);
+                            }
+
+                            if state.contains_key(receiver) {
+                                if let Some(receiver_balance) = state.get(receiver) {
+                                    state.insert(receiver.clone(), receiver_balance + amount);
+                                }
+                            } else {
+                                state.insert(receiver.clone(), *amount);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        state
     }
 }
 
